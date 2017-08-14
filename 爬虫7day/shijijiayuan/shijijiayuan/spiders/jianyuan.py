@@ -2,17 +2,24 @@
 import scrapy
 import json
 from shijijiayuan.items import ShijijiayuanItem
+from scrapy_redis.spiders import RedisSpider
 
 
-class JianyuanSpider(scrapy.Spider):
+class JianyuanSpider(RedisSpider):
     name = 'jiayuan'
-    allowed_domains = ['jiayuan.com']
+    # allowed_domains = ['jiayuan.com']
     page = 1
-
+    redis_key = 'myspider:start_urls'
     # start_urls = ['http://jiayuan.com/']
+    def __init__(self, *args, **kwargs):
+        # Dynamically define the allowed domains list.
+        domain = kwargs.pop('domain', '')
+        self.allowed_domains = filter(None, domain.split(','))
+        super(JianyuanSpider, self).__init__(*args, **kwargs)
 
-    def start_requests(self):
+    def parse(self,response):
         url = 'https://passport.jiayuan.com/dologin.php?host=www.jiayuan.com&new_header=1&channel=index/'
+
         yield scrapy.FormRequest(
             url = url,
             formdata= {
@@ -26,11 +33,7 @@ class JianyuanSpider(scrapy.Spider):
 
 
     def parse_page(self, response):
-
-
-
         print response.status
-
         url = 'http://search.jiayuan.com/v2/search_v2.php' + "?" + str(self.page) + "/"
         while self.page <= 5:
             yield scrapy.FormRequest(
@@ -52,12 +55,11 @@ class JianyuanSpider(scrapy.Spider):
 
             if self.page < 200:
                 self.page += 1
-            print self.page
+            # print self.page
 
 
     def delpage(self,response):
         print response.status
-        item =ShijijiayuanItem()
         content = response.body[11:-13]
         # print 9999999
         # print content
@@ -66,6 +68,7 @@ class JianyuanSpider(scrapy.Spider):
         userinfo =content["userInfo"]
 
         for user in userinfo:
+            item = ShijijiayuanItem()
             item['userid'] = user['realUid']
             item['nickname'] = user['nickname']
             item['sex'] = user['sex']
@@ -78,19 +81,53 @@ class JianyuanSpider(scrapy.Spider):
             item['matchCondition'] = user['matchCondition']
             url = "http://www.jiayuan.com/" + str(user['realUid'])
             item['source'] = url
-
+            # print 8888
+            # print url
+            # print 9999
             yield scrapy.Request(url= url, meta={"meta_1": item}, callback=self.second_parse)
+
 
 
     def second_parse(self,response):
         meta_1 = response.meta['meta_1']
+        income = response.xpath('string(//ul[@class="member_info_list fn-clear"]//li[4])').extract()[0]
+        house = response.xpath('string(//ul[@class="member_info_list fn-clear"]//li[5])').extract()[0]
+        weight = response.xpath('string(//ul[@class="member_info_list fn-clear"]//li[6])').extract()[0]
 
-        print meta_1
+        income = ''.join(income.split())
+        house = ''.join(house.split())
+        weight = ''.join(weight.split())
+
+
+        meta_1['income'] = income
+        meta_1['house'] = house
+        meta_1['weight'] = weight
+
+        # 相册地址
+        images_urls = response.xpath('//div[@class="small_pic fn-clear"]//a/@href').extract()[0]
+        # print images_urls
+
+        yield scrapy.Request(url=images_urls,meta={"meta_2":meta_1},callback=self.thirdly_parse)
+
+    def thirdly_parse(self,response):
+        meta_2 = response.meta['meta_2']
+        images_urls = response.xpath('//td[@align="center"]/img/@src').extract()
+        meta_2['images_urls'] = images_urls
+
+        yield meta_2
+
+
+
+
 
 
 
 
         """
+        相册地址
+       //div[@class="small_pic fn-clear"]//a/@href 
+        相册每张图片地址
+        //td[@align="center"]/img/@src
          
          //ul[@class="member_info_list fn-clear"]//li 456 月薪住房体重
          

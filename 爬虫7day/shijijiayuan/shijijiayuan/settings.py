@@ -15,6 +15,14 @@ SPIDER_MODULES = ['shijijiayuan.spiders']
 NEWSPIDER_MODULE = 'shijijiayuan.spiders'
 
 
+# redis
+DUPEFILTER_CLASS = "scrapy_redis.dupefilter.RFPDupeFilter"
+SCHEDULER = "scrapy_redis.scheduler.Scheduler"
+SCHEDULER_PERSIST = True
+# redis
+
+
+IMAGES_STORE = "/home/ronjuer/shijijiayuan"
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 #USER_AGENT = 'shijijiayuan (+http://www.yourdomain.com)'
 
@@ -65,9 +73,14 @@ DEFAULT_REQUEST_HEADERS = {
 
 # Configure item pipelines
 # See http://scrapy.readthedocs.org/en/latest/topics/item-pipeline.html
-#ITEM_PIPELINES = {
-#    'shijijiayuan.pipelines.ShijijiayuanPipeline': 300,
-#}
+ITEM_PIPELINES = {
+   'shijijiayuan.pipelines.ShijijiayuanPipeline': 300,
+    'scrapy_redis.pipelines.RedisPipeline': 400,
+}
+
+REDIS_HOST = "172.16.4.233"
+REDIS_PORT = "6379"
+
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See http://doc.scrapy.org/en/latest/topics/autothrottle.html

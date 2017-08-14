@@ -49,6 +49,9 @@ class ShijijiayuanItem(scrapy.Item):
     #择偶条件
     matchCondition = scrapy.Field()
 
+    crawled = scrapy.Field()
+    spider = scrapy.Field()
+
     """ 
     
     
